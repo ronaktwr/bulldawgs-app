@@ -30,9 +30,16 @@ export default function BulldawgsApp() {
   const [agentList, setAgentList] = useState([]);
   const [groupChannels, setGroupChannels] = useState([]);
   
-  // NEW: Elite Features State
-  const [theme, setTheme] = useState('green'); // 'green' or 'blue'
+  // Elite Features State
+  const [theme, setTheme] = useState('green'); 
   const [replyingTo, setReplyingTo] = useState(null);
+
+  // NEW: Custom Modal State (Fixes the INP Lag Error)
+  const [showGroupModal, setShowGroupModal] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameChannelId, setRenameChannelId] = useState(null);
+  const [newRenameValue, setNewRenameValue] = useState("");
   
   const messagesEndRef = useRef(null);
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -115,22 +122,37 @@ export default function BulldawgsApp() {
     socket.emit('join_chat', chatId);
   };
 
-  const handleCreateGroup = () => {
-    const groupName = prompt("Enter the name for the new secure group:");
-    if (groupName && groupName.trim() !== "" && socket) {
-      socket.emit('create_channel', groupName.trim());
-    }
+  // MODAL FUNCTIONS (Replaces window.prompt)
+  const openCreateModal = () => {
+    setNewGroupName("");
+    setShowGroupModal(true);
   };
 
-  const handleRenameGroup = (e, channelId, currentName) => {
+  const submitCreateGroup = () => {
+    if (newGroupName && newGroupName.trim() !== "" && socket) {
+      socket.emit('create_channel', newGroupName.trim());
+    }
+    setShowGroupModal(false);
+    setNewGroupName("");
+  };
+
+  const openRenameModal = (e, channelId, currentName) => {
     e.stopPropagation();
-    const newName = prompt(`Enter new name for "${currentName}":`, currentName);
-    if (newName && newName.trim() !== "" && newName !== currentName && socket) {
-      socket.emit('rename_channel', { channelId, newName: newName.trim() });
-    }
+    setRenameChannelId(channelId);
+    setNewRenameValue(currentName);
+    setShowRenameModal(true);
   };
 
-  // UPLOAD LOGIC (Media OR Avatar)
+  const submitRenameGroup = () => {
+    if (newRenameValue && newRenameValue.trim() !== "" && socket && renameChannelId) {
+      socket.emit('rename_channel', { channelId: renameChannelId, newName: newRenameValue.trim() });
+    }
+    setShowRenameModal(false);
+    setRenameChannelId(null);
+    setNewRenameValue("");
+  };
+
+  // UPLOAD LOGIC 
   const uploadFile = async (fileToUpload) => {
     const fileName = `${Math.random().toString(36).substring(7)}.${fileToUpload.name.split('.').pop()}`;
     const filePath = `uploads/${fileName}`;
@@ -193,7 +215,7 @@ export default function BulldawgsApp() {
       <div className="flex min-h-screen items-center justify-center bg-black text-white p-4">
         <div className="w-full max-w-md p-8 rounded-2xl bg-[#0a0a0a] border border-white/10 shadow-2xl">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-black tracking-widest text-[#39FF14] mb-2">BULLDAWGS</h1>
+            <h1 className={`text-3xl font-black tracking-widest ${tText} mb-2`}>BULLDAWGS</h1>
             <p className="text-sm text-gray-400 uppercase tracking-widest">Restricted Access</p>
           </div>
           {authError && <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-500 text-sm text-center">{authError}</div>}
@@ -201,15 +223,15 @@ export default function BulldawgsApp() {
             {!isLoginMode && (
               <>
                 <div><label className="text-xs text-gray-400 font-bold uppercase">Username</label><input type="text" required value={username} onChange={(e) => setUsername(e.target.value)} className="w-full mt-1 bg-[#1a1a1a] text-white rounded-lg px-4 py-3 text-sm border border-white/5" /></div>
-                <div><label className="text-xs text-gray-400 font-bold uppercase">Invite Code</label><input type="text" required value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} className="w-full mt-1 bg-[#1a1a1a] text-[#39FF14] font-mono rounded-lg px-4 py-3 text-sm border border-white/5 uppercase" /></div>
+                <div><label className="text-xs text-gray-400 font-bold uppercase">Invite Code</label><input type="text" required value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} className={`w-full mt-1 bg-[#1a1a1a] ${tText} font-mono rounded-lg px-4 py-3 text-sm border border-white/5 uppercase`} /></div>
               </>
             )}
             <div><label className="text-xs text-gray-400 font-bold uppercase">Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full mt-1 bg-[#1a1a1a] text-white rounded-lg px-4 py-3 text-sm border border-white/5" /></div>
             <div><label className="text-xs text-gray-400 font-bold uppercase">Password</label><input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full mt-1 bg-[#1a1a1a] text-white rounded-lg px-4 py-3 text-sm border border-white/5" /></div>
-            <button type="submit" className="w-full mt-6 bg-[#39FF14] text-black rounded-lg px-4 py-3 font-bold">{isLoginMode ? 'INITIALIZE CONNECTION' : 'VERIFY & REGISTER'}</button>
+            <button type="submit" className={`w-full mt-6 ${tBg} text-black rounded-lg px-4 py-3 font-bold`}>{isLoginMode ? 'INITIALIZE CONNECTION' : 'VERIFY & REGISTER'}</button>
           </form>
           <div className="mt-6 text-center">
-            <button onClick={() => { setIsLoginMode(!isLoginMode); setAuthError(""); }} className="text-xs text-gray-500 hover:text-[#39FF14] transition underline">{isLoginMode ? "No access? Enter invite code." : "Already an agent? Login here."}</button>
+            <button onClick={() => { setIsLoginMode(!isLoginMode); setAuthError(""); }} className={`text-xs text-gray-500 ${tHover.replace('bg-', 'text-')} transition underline`}>{isLoginMode ? "No access? Enter invite code." : "Already an agent? Login here."}</button>
           </div>
         </div>
       </div>
@@ -227,7 +249,7 @@ export default function BulldawgsApp() {
               <label className="cursor-pointer relative group">
                 <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
                 <div className={`w-8 h-8 rounded-full bg-[#1a1a1a] border ${tBorder} flex items-center justify-center overflow-hidden`}>
-                  {user?.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" /> : "👤"}
+                  {user?.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" alt="avatar" /> : "👤"}
                 </div>
                 <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><span className="text-[8px]">EDIT</span></div>
               </label>
@@ -236,7 +258,6 @@ export default function BulldawgsApp() {
               </div>
             </div>
           </div>
-          {/* Theme Toggle */}
           <button onClick={() => setTheme(theme === 'green' ? 'blue' : 'green')} className="text-xs text-gray-600 hover:text-white" title="Toggle Theme">
             {theme === 'green' ? '🟢' : '🔵'}
           </button>
@@ -246,7 +267,7 @@ export default function BulldawgsApp() {
           <div>
             <div className="flex justify-between items-center mb-3 px-2">
               <h3 className="text-xs text-gray-500 font-bold uppercase tracking-widest">Group Channels</h3>
-              <button onClick={handleCreateGroup} className={`${tText} hover:text-white font-bold text-lg leading-none transition`} title="Create New Group">+</button>
+              <button onClick={openCreateModal} className={`${tText} hover:text-white font-bold text-lg leading-none transition`} title="Create New Group">+</button>
             </div>
             {groupChannels.map((chat) => (
               <div key={chat.channel_id} onClick={() => switchChat(chat.channel_id, chat.name)} 
@@ -256,7 +277,7 @@ export default function BulldawgsApp() {
                   <span className={`font-bold ${activeChat.id === chat.channel_id ? tText : 'text-gray-300'}`}>{chat.name}</span>
                 </div>
                 {user.is_admin && (
-                  <button onClick={(e) => handleRenameGroup(e, chat.channel_id, chat.name)} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-white transition text-xs" title="Rename Group">✎</button>
+                  <button onClick={(e) => openRenameModal(e, chat.channel_id, chat.name)} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-white transition text-xs" title="Rename Group">✎</button>
                 )}
               </div>
             ))}
@@ -271,7 +292,7 @@ export default function BulldawgsApp() {
                 <div key={agent.id} onClick={() => switchChat(dmId, agent.username)} 
                      className={`p-3 mb-1 rounded-lg cursor-pointer transition flex items-center gap-3 ${isActive ? `${tBg}/10 border ${tBorder}/50` : 'hover:bg-white/5 border border-transparent'}`}>
                   <div className={`w-6 h-6 rounded-full bg-[#1a1a1a] border border-gray-600 flex items-center justify-center overflow-hidden`}>
-                    {agent.avatar_url ? <img src={agent.avatar_url} className="w-full h-full object-cover" /> : <span className="text-[10px]">👤</span>}
+                    {agent.avatar_url ? <img src={agent.avatar_url} className="w-full h-full object-cover" alt="avatar" /> : <span className="text-[10px]">👤</span>}
                   </div>
                   <span className={`font-bold ${isActive ? tText : 'text-gray-300'}`}>
                     {agent.username} {agent.is_admin && <span className="text-red-500 text-[10px] ml-1">★</span>}
@@ -303,7 +324,7 @@ export default function BulldawgsApp() {
               <div key={index} className={`flex ${isMe ? 'justify-end' : 'justify-start'} gap-3 group`}>
                 {!isMe && (
                    <div className="w-8 h-8 rounded-full bg-[#1a1a1a] border border-gray-600 flex-shrink-0 flex items-center justify-center overflow-hidden mt-4">
-                     {senderAgent?.avatar_url ? <img src={senderAgent.avatar_url} className="w-full h-full object-cover" /> : "👤"}
+                     {senderAgent?.avatar_url ? <img src={senderAgent.avatar_url} className="w-full h-full object-cover" alt="avatar" /> : "👤"}
                    </div>
                 )}
                 
@@ -317,7 +338,6 @@ export default function BulldawgsApp() {
                     isMe ? `${tBg} text-black rounded-tr-sm` : 'bg-[#1a1a1a] text-gray-200 rounded-tl-sm border border-white/10'
                   }`}>
                     
-                    {/* Hover Actions: Reply & Delete */}
                     {!msg.is_deleted && msg.id && (
                       <div className={`absolute -top-3 ${isMe ? 'left-0 -ml-8' : 'right-0 -mr-8'} opacity-0 group-hover:opacity-100 transition flex gap-1 bg-[#0a0a0a] border border-white/10 rounded-full p-1 shadow-lg`}>
                         <button onClick={() => setReplyingTo(msg)} className="w-6 h-6 rounded-full flex items-center justify-center text-xs hover:bg-gray-800" title="Reply">↩️</button>
@@ -325,7 +345,6 @@ export default function BulldawgsApp() {
                       </div>
                     )}
 
-                    {/* Reply Display */}
                     {replyOrigin && (
                       <div className={`text-xs p-2 mb-2 rounded-lg opacity-80 ${isMe ? 'bg-black/20 border border-black/10' : 'bg-black/40 border border-white/5'}`}>
                         <span className="font-bold">{replyOrigin.sender_name}: </span>
@@ -339,7 +358,6 @@ export default function BulldawgsApp() {
                     
                     <p className="text-sm md:text-base leading-relaxed break-words">{msg.content}</p>
                     
-                    {/* Emoji Reaction Bar */}
                     {!msg.is_deleted && msg.id && (
                        <div className="absolute -bottom-4 left-4 flex gap-1">
                           {['🔥', '👍', '👀'].map(emoji => (
@@ -358,7 +376,7 @@ export default function BulldawgsApp() {
 
                 {isMe && (
                    <div className="w-8 h-8 rounded-full bg-[#1a1a1a] border border-gray-600 flex-shrink-0 flex items-center justify-center overflow-hidden mt-4">
-                     {user?.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" /> : "👤"}
+                     {user?.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" alt="avatar" /> : "👤"}
                    </div>
                 )}
               </div>
@@ -386,6 +404,50 @@ export default function BulldawgsApp() {
             </button>
           </form>
         </div>
+
+        {/* CUSTOM MODALS */}
+        {showGroupModal && (
+          <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className={`bg-[#0a0a0a] border ${tBorder} p-6 rounded-2xl w-full max-w-sm shadow-2xl`} style={{ boxShadow: `0 0 20px ${tColor}40` }}>
+              <h2 className={`text-xl font-black mb-4 tracking-widest ${tText}`}>NEW DIRECTIVE</h2>
+              <p className="text-xs text-gray-400 mb-4 uppercase">Enter designation for new secure group:</p>
+              <input 
+                type="text" 
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                className="w-full bg-[#1a1a1a] border border-white/10 text-white p-3 rounded-lg mb-6 focus:outline-none focus:border-white/50"
+                placeholder="e.g. Ghost Protocol"
+                autoFocus
+              />
+              <div className="flex justify-end gap-4 items-center">
+                <button onClick={() => setShowGroupModal(false)} className="text-gray-500 hover:text-white font-bold text-xs uppercase tracking-widest transition">Cancel</button>
+                <button onClick={submitCreateGroup} className={`${tBg} text-black px-5 py-2 font-black rounded-lg text-sm uppercase tracking-widest hover:opacity-80 transition`}>Initialize</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showRenameModal && (
+          <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className={`bg-[#0a0a0a] border ${tBorder} p-6 rounded-2xl w-full max-w-sm shadow-2xl`} style={{ boxShadow: `0 0 20px ${tColor}40` }}>
+              <h2 className={`text-xl font-black mb-4 tracking-widest ${tText}`}>RENAME DIRECTIVE</h2>
+              <p className="text-xs text-gray-400 mb-4 uppercase">Enter new designation for group:</p>
+              <input 
+                type="text" 
+                value={newRenameValue}
+                onChange={(e) => setNewRenameValue(e.target.value)}
+                className="w-full bg-[#1a1a1a] border border-white/10 text-white p-3 rounded-lg mb-6 focus:outline-none focus:border-white/50"
+                placeholder="New name..."
+                autoFocus
+              />
+              <div className="flex justify-end gap-4 items-center">
+                <button onClick={() => setShowRenameModal(false)} className="text-gray-500 hover:text-white font-bold text-xs uppercase tracking-widest transition">Cancel</button>
+                <button onClick={submitRenameGroup} className={`${tBg} text-black px-5 py-2 font-black rounded-lg text-sm uppercase tracking-widest hover:opacity-80 transition`}>Override</button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </main>
     </div>
   );
